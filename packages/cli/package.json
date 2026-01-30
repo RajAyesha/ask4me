@@ -1,0 +1,15 @@
+{
+  "name": "ask4me-cli",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ask4me-cli": "./bin/ask4me-cli.js"
+  },
+  "dependencies": {
+    "ask4me-sdk": "0.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

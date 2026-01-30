@@ -1,0 +1,7 @@
+.env
+ask4me.db
+ask4me.db*
+node_modules
+dist
+deploy.md
+DEV.md

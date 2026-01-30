@@ -1,0 +1,35 @@
+version: 2
+
+project_name: ask4me
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: ask4me
+    main: .
+    binary: ask4me
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
+archives:
+  - id: binaries
+    builds:
+      - ask4me
+    format: binary
+    name_template: ask4me-{{ .Os }}-{{ .Arch }}{{ if eq .Os "windows" }}.exe{{ end }}
+
+checksum:
+  name_template: checksums.txt

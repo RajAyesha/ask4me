@@ -1,0 +1,50 @@
+{
+  "name": "ask4me-server",
+  "version": "0.1.0",
+  "description": "Download and run Ask4Me server binary with guided setup",
+  "keywords": [
+    "ask4me",
+    "serverchan",
+    "apprise",
+    "notification",
+    "sse",
+    "cli"
+  ],
+  "homepage": "https://github.com/easychen/ask4me#readme",
+  "bugs": {
+    "url": "https://github.com/easychen/ask4me/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/easychen/ask4me.git",
+    "directory": "packages/server"
+  },
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ask4me-server": "./bin/ask4me-server.js"
+  },
+  "scripts": {
+    "postinstall": "node ./scripts/postinstall.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "src/"
+  ],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

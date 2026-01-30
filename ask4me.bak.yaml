@@ -1,0 +1,10 @@
+base_url: "http://dd.ftqq.com:8080"
+api_key: "change-me"
+serverchan_sendkey: "sctp4ta-bmg64xahvpby74i29tg5pcfw"
+apprise_bin: "apprise"
+# apprise_urls: ["schan://SCT1..."]
+sqlite_path: "./ask4me.db"
+default_expires_in_seconds: 3600
+sse_heartbeat_interval_seconds: 15
+listen_addr: ":8080"
+terminal_cache_seconds: 60

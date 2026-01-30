@@ -1,0 +1,12 @@
+{
+  "name": "ask4me-monorepo",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "sdk-js",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
