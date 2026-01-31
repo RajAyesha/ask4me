@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
+	"embed"
 	"encoding/base32"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
@@ -30,6 +32,9 @@ import (
 	"gopkg.in/yaml.v3"
 	_ "modernc.org/sqlite"
 )
+
+//go:embed ui/dist/*
+var uiDistEmbedFS embed.FS
 
 type Config struct {
 	BaseURL                     string   `yaml:"base_url"`
@@ -594,14 +599,10 @@ var pageTpl = template.Must(template.New("page").Parse(`<!doctype html>
           <button id="submitBtn" type="submit">Submit</button>
         </form>
       </div>
-      <script type="module">
-        (async () => {
-          const elApp = document.getElementById("app");
-          const elErr = document.getElementById("err");
-          const elSubmitBtn = document.getElementById("submitBtn");
-          const elPayload = document.getElementById("payload_json");
-          const form = document.getElementById("submitForm");
-
+      <script src="/static/jsonforms.bundle.js"></script>
+      <script>
+        (function () {
+          var elErr = document.getElementById("err");
           function showError(message) {
             if (!elErr) return;
             elErr.className = "err";
@@ -609,96 +610,22 @@ var pageTpl = template.Must(template.New("page").Parse(`<!doctype html>
             elErr.style.display = "block";
           }
 
-          try {
-            const ReactMod = await import("https://esm.sh/react@19.2.4?target=es2020");
-            const React = ReactMod.default ?? ReactMod;
-            const { useEffect, useMemo, useState } = ReactMod;
-
-            const { createRoot } = await import("https://esm.sh/react-dom@19.2.4/client?target=es2020");
-            const { JsonForms } = await import("https://esm.sh/@jsonforms/react@3.5.1?target=es2020");
-            const { vanillaRenderers, vanillaCells } = await import("https://esm.sh/@jsonforms/vanilla-renderers@3.5.1?target=es2020");
-
-            function App() {
-              const [schema, setSchema] = useState(null);
-              const [uischema, setUiSchema] = useState(undefined);
-              const [data, setData] = useState({});
-              const [errors, setErrors] = useState([]);
-              const [submitLabel, setSubmitLabel] = useState("Submit");
-
-              useEffect(() => {
-                (async () => {
-                  try {
-                    const res = await fetch("./spec?k={{urlquery .Token}}", { headers: { Accept: "application/json" } });
-                    if (!res.ok) {
-                      showError("Failed to load form spec.");
-                      return;
-                    }
-                    const spec = await res.json();
-                    if (!spec || typeof spec !== "object" || !spec.schema) {
-                      showError("Invalid form spec.");
-                      return;
-                    }
-                    setSchema(spec.schema);
-                    if (spec.uischema) setUiSchema(spec.uischema);
-                    if (spec.data !== undefined && spec.data !== null) setData(spec.data);
-                    if (typeof spec.submit_label === "string" && spec.submit_label.trim()) {
-                      setSubmitLabel(spec.submit_label.trim());
-                    }
-                  } catch {
-                    showError("Failed to load form spec.");
-                  }
-                })();
-              }, []);
-
-              useEffect(() => {
-                if (elSubmitBtn) elSubmitBtn.textContent = submitLabel;
-              }, [submitLabel]);
-
-              const hasErrors = useMemo(() => Array.isArray(errors) && errors.length > 0, [errors]);
-              useEffect(() => {
-                if (elSubmitBtn) elSubmitBtn.disabled = hasErrors;
-              }, [hasErrors]);
-
-              useEffect(() => {
-                if (!elPayload) return;
-                try {
-                  elPayload.value = JSON.stringify(data ?? {});
-                } catch {
-                  elPayload.value = "{}";
-                }
-              }, [data]);
-
-              if (!schema) {
-                return React.createElement("div", null, "Loading...");
-              }
-
-              return React.createElement(JsonForms, {
-                schema,
-                uischema,
-                data,
-                renderers: vanillaRenderers,
-                cells: vanillaCells,
-                onChange: ({ data, errors }) => {
-                  if (data !== undefined) setData(data);
-                  if (Array.isArray(errors)) setErrors(errors);
-                }
-              });
-            }
-
-            if (form) {
-              form.addEventListener("submit", () => {
-                try {
-                  if (!elPayload.value) elPayload.value = "{}";
-                } catch {}
-              });
-            }
-
-            if (elApp) createRoot(elApp).render(React.createElement(App));
-          } catch (e) {
-            const message = e && typeof e === "object" && "message" in e ? String(e.message) : "";
-            showError("Failed to load form renderer." + (message ? " " + message : ""));
+          var api = window.Ask4MeJsonForms;
+          if (!api || !api.mount) {
+            showError("Failed to load form renderer.");
+            var elApp = document.getElementById("app");
             if (elApp) elApp.textContent = "";
+            return;
           }
+
+          api.mount({
+            specUrl: "./spec?k={{urlquery .Token}}",
+            appId: "app",
+            errId: "err",
+            submitBtnId: "submitBtn",
+            payloadInputId: "payload_json",
+            formId: "submitForm"
+          });
         })();
       </script>
     {{else}}
@@ -757,6 +684,17 @@ func (s *server) auth(next http.Handler) http.Handler {
 
 func (s *server) routes() http.Handler {
 	mux := http.NewServeMux()
+	if distFS, err := fs.Sub(uiDistEmbedFS, "ui/dist"); err == nil {
+		fsHandler := http.FileServer(http.FS(distFS))
+		mux.Handle("/static/", http.StripPrefix("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/") {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+			fsHandler.ServeHTTP(w, r)
+		})))
+	}
 	mux.Handle("/v1/ask", s.auth(http.HandlerFunc(s.handleAsk)))
 	mux.HandleFunc("/r/", s.handleUser)
 	return mux
