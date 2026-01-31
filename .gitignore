@@ -3,5 +3,8 @@ ask4me.db
 ask4me.db*
 node_modules
 dist
+!ui/dist/
+ui/dist/*
+!ui/dist/.keep
 deploy.md
 DEV.md
