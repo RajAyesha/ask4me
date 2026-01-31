@@ -37,6 +37,7 @@ cp .env.example .env
 推荐使用 `ask4me-server` 自动下载/启动：
 
 ```bash
+npm install -g ask4me-server
 ask4me-server --config ./.env
 ```
 
