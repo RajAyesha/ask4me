@@ -2,6 +2,12 @@
 
 > [English](README.md) | 中文
 
+
+
+https://github.com/user-attachments/assets/9258e5f1-4d00-4c76-8637-8fff220c14dc
+
+
+
 Ask4Me 是一个自建的小服务：你通过 API 发起一个“请求”，服务端把交互链接推送到你的通知渠道（Server酱 / Apprise）。你在手机或浏览器里点开链接，按按钮或输入文字提交后，发起请求的那条 HTTP 长连接会拿到最终结果（JSON 或 SSE）。
 
 从概念上说，这是一种 Human-in-the-Loop：这可能是你能自建的最简单的 Human-in-the-Loop 方案之一。
