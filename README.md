@@ -2,6 +2,9 @@
 
 > English | [中文](README.zh-CN.md)
 
+
+https://github.com/user-attachments/assets/13c395e3-8be6-4a44-a460-a966de29b2d9
+
 Ask4Me is a self-hosted service: you send a “request” via API, the server pushes an interaction link to your notification channel (ServerChan / Apprise). You open the link on your phone or in a browser, click a button or type text to submit, and the original HTTP long-poll request receives the final result (JSON or SSE).
 
 Conceptually, this is Human-in-the-Loop: it might be one of the simplest Human-in-the-Loop setups you can self-host.
