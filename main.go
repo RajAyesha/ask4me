@@ -1300,7 +1300,7 @@ func (s *server) sendNotification(ctx context.Context, requestID, title, body, i
 		msg = "Please respond."
 	}
 	if interactionURL != "" {
-		msg = msg + "\n\n" + interactionURL
+		msg = msg + "\n\n" + fmt.Sprintf("[%s](<%s>)", interactionURL, interactionURL)
 	}
 
 	sendkey := strings.TrimSpace(s.cfg.ServerChanSendKey)
