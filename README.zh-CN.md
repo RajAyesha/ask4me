@@ -101,6 +101,7 @@ curl -sS --max-time 120 \
 - 请提供 `mcd` 或 `jsonforms.schema`。如果两者都没提供，服务端会降级成一个默认的 OK 按钮。
 - `--max-time 120` 是一个示例值：避免你在终端里“无限等”。如果 120 秒内你还没点开通知并提交，curl 会超时退出；你可以用 `request_id` 重新发起“续接等待”（见下文）。
 - nonStream 模式下，响应不会返回交互链接（interaction_url）；交互链接会通过通知渠道发到你手机/客户端。
+- Server酱 3 支持在通知 Markdown 里展示可点击的 Action Link（无需打开浏览器）。要启用该能力，请传 `serverchan_action_links=true`，并确保 `ASK4ME_BASE_URL` 为 `https`（Action Link 仅支持 https 链接替换为 `sccallback://`）。
 
 返回示例（终态后返回）：
 
@@ -111,6 +112,16 @@ curl -sS --max-time 120 \
   "data": { "action": "ok", "text": "" },
   "last_event_id": "evt_xxx"
 }
+```
+
+启用 Server酱 3 Action Link 的示例（POST）：
+
+```bash
+curl -sS --max-time 120 \
+  -X POST 'http://localhost:8080/v1/ask' \
+  -H 'Authorization: Bearer change-me' \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Ask4Me Demo","body":"请点一个按钮回复。","serverchan_action_links":true,"mcd":":::buttons\n- [OK](ok)\n- [Later](later)\n:::"}'
 ```
 
 ### 1b) 使用 JSON Forms（schema 驱动表单）

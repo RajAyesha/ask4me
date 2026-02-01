@@ -463,7 +463,8 @@ type askRequest struct {
 		SubmitLabel string          `json:"submit_label"`
 		Renderer    string          `json:"renderer"`
 	} `json:"jsonforms"`
-	ExpiresInSeconds int `json:"expires_in_seconds"`
+	ExpiresInSeconds      int  `json:"expires_in_seconds"`
+	ServerChanActionLinks bool `json:"serverchan_action_links"`
 }
 
 type buttonSpec struct {
@@ -824,6 +825,7 @@ func parseAskRequestFromHTTP(r *http.Request) (askRequest, error) {
 		ar.Body = q.Get("body")
 		ar.MCD = q.Get("mcd")
 		ar.ExpiresInSeconds, _ = strconv.Atoi(strings.TrimSpace(q.Get("expires_in_seconds")))
+		ar.ServerChanActionLinks = parseBoolQuery(q.Get("serverchan_action_links"))
 	default:
 		return askRequest{}, errors.New("method not allowed")
 	}
@@ -949,7 +951,7 @@ func (s *server) handleAskJSON(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		go s.sendNotification(context.Background(), requestID, ar2.Title, ar2.Body, interactionURL)
+		go s.sendNotification(context.Background(), requestID, ar2, interactionURL)
 		go s.expireLoop(context.Background(), requestID, expiresAt)
 
 		tev, err := s.waitTerminalEvent(ctx, requestID)
@@ -989,7 +991,7 @@ func (s *server) handleAskJSON(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "failed to create request", http.StatusInternalServerError)
 				return
 			}
-			go s.sendNotification(context.Background(), requestID, ar2.Title, ar2.Body, interactionURL)
+			go s.sendNotification(context.Background(), requestID, ar2, interactionURL)
 			go s.expireLoop(context.Background(), requestID, expiresAt)
 
 			tev, err := s.waitTerminalEvent(ctx, requestID)
@@ -1069,7 +1071,7 @@ func (s *server) handleAskSSE(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		go s.sendNotification(context.Background(), requestID, ar2.Title, ar2.Body, interactionURL)
+		go s.sendNotification(context.Background(), requestID, ar2, interactionURL)
 		go s.expireLoop(context.Background(), requestID, expiresAt)
 
 		s.streamUntilDone(ctx, w, requestID, firstEventID)
@@ -1109,7 +1111,7 @@ func (s *server) handleAskSSE(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "failed to create request", http.StatusInternalServerError)
 				return
 			}
-			go s.sendNotification(context.Background(), requestID, ar2.Title, ar2.Body, interactionURL)
+			go s.sendNotification(context.Background(), requestID, ar2, interactionURL)
 			go s.expireLoop(context.Background(), requestID, expiresAt)
 
 			s.streamUntilDone(ctx, w, requestID, firstEventID)
@@ -1294,18 +1296,38 @@ func formatShellCommand(bin string, args []string) string {
 	return strings.Join(parts, " ")
 }
 
-func (s *server) sendNotification(ctx context.Context, requestID, title, body, interactionURL string) {
-	msg := strings.TrimSpace(body)
+func (s *server) sendNotification(ctx context.Context, requestID string, ar askRequest, interactionURL string) {
+	msg := strings.TrimSpace(ar.Body)
 	if msg == "" {
 		msg = "Please respond."
-	}
-	if interactionURL != "" {
-		msg = msg + "\n\n" + fmt.Sprintf("[%s](<%s>)", interactionURL, interactionURL)
 	}
 
 	sendkey := strings.TrimSpace(s.cfg.ServerChanSendKey)
 	if sendkey != "" {
-		resp, err := serverchan_sdk.ScSend(sendkey, title, msg, &serverchan_sdk.ScSendOptions{
+		if ar.ServerChanActionLinks {
+			spec := parseMCD(ar.MCD)
+			if len(spec.Buttons) > 0 && (ar.JsonForms == nil || len(bytes.TrimSpace(ar.JsonForms.Schema)) == 0) {
+				actionLinks := make([]string, 0, len(spec.Buttons))
+				for _, b := range spec.Buttons {
+					link, ok := makeServerChanActionLink(interactionURL, b.Value)
+					if !ok {
+						actionLinks = nil
+						break
+					}
+					label := escapeMarkdownLinkText(b.Label)
+					title := sanitizeMarkdownLinkTitle(b.Label)
+					actionLinks = append(actionLinks, fmt.Sprintf("- [%s](%s \"%s\")", label, link, title))
+				}
+				if len(actionLinks) > 0 {
+					msg = msg + "\n\n" + "### Actions" + "\n\n" + strings.Join(actionLinks, "\n") + "\n---\n"
+				}
+			}
+		}
+		if interactionURL != "" {
+			msg = msg + "\n\n" + fmt.Sprintf("[%s](<%s>)", interactionURL, interactionURL)
+		}
+
+		resp, err := serverchan_sdk.ScSend(sendkey, ar.Title, msg, &serverchan_sdk.ScSendOptions{
 			Tags: "ask4me",
 		})
 		if err != nil {
@@ -1339,6 +1361,10 @@ func (s *server) sendNotification(ctx context.Context, requestID, title, body, i
 		return
 	}
 
+	if interactionURL != "" {
+		msg = msg + "\n\n" + fmt.Sprintf("[%s](<%s>)", interactionURL, interactionURL)
+	}
+
 	if len(s.cfg.AppriseURLs) == 0 {
 		ev := s.mustNewEvent(ctx, requestID, "notify.failed", map[string]any{
 			"error": "no serverchan_sendkey or apprise_urls configured",
@@ -1349,7 +1375,7 @@ func (s *server) sendNotification(ctx context.Context, requestID, title, body, i
 		return
 	}
 
-	args := []string{"-vv", "--title", title, "--body", msg}
+	args := []string{"-vv", "--title", ar.Title, "--body", msg}
 	for _, u := range s.cfg.AppriseURLs {
 		v := normalizeAppriseURL(u)
 		if v != "" {
@@ -1383,6 +1409,48 @@ func (s *server) sendNotification(ctx context.Context, requestID, title, body, i
 	})
 	_ = s.persistTerminalAware(ctx, ev)
 	_ = s.db.updateRequestStatus(ctx, requestID, "delivered")
+}
+
+func makeServerChanActionLink(interactionURL, actionValue string) (string, bool) {
+	u, err := url.Parse(interactionURL)
+	if err != nil || u.Host == "" {
+		return "", false
+	}
+	if strings.ToLower(strings.TrimSpace(u.Scheme)) != "https" {
+		return "", false
+	}
+
+	tokenPlain := u.Query().Get("k")
+	if strings.TrimSpace(tokenPlain) == "" {
+		return "", false
+	}
+
+	p := strings.TrimSuffix(u.Path, "/")
+	u.Path = p + "/submit"
+	u.RawPath = ""
+	q := url.Values{}
+	q.Set("k", tokenPlain)
+	q.Set("action", actionValue)
+	q.Set("callback", "1")
+	u.RawQuery = q.Encode()
+	u.Fragment = ""
+	u.Scheme = "sccallback"
+	u.User = nil
+	return u.String(), true
+}
+
+func sanitizeMarkdownLinkTitle(s string) string {
+	v := strings.ReplaceAll(s, "\r", " ")
+	v = strings.ReplaceAll(v, "\n", " ")
+	v = strings.ReplaceAll(v, `"`, `'`)
+	return strings.TrimSpace(v)
+}
+
+func escapeMarkdownLinkText(s string) string {
+	v := strings.ReplaceAll(s, "\r", " ")
+	v = strings.ReplaceAll(v, "\n", " ")
+	v = strings.ReplaceAll(v, "]", `\]`)
+	return strings.TrimSpace(v)
 }
 
 func (s *server) persistTerminalAware(ctx context.Context, ev Event) error {
@@ -1503,11 +1571,27 @@ func (s *server) handleUser(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		callbackMode := parseBoolQuery(r.URL.Query().Get("callback"))
 		if status == "submitted" || status == "expired" {
+			if callbackMode {
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				if status == "expired" {
+					w.WriteHeader(http.StatusGone)
+					_, _ = io.WriteString(w, "Expired.")
+					return
+				}
+				w.WriteHeader(http.StatusConflict)
+				_, _ = io.WriteString(w, "Already submitted.")
+				return
+			}
 			http.Redirect(w, r, "./?k="+url.QueryEscape(tokenPlain), http.StatusSeeOther)
 			return
 		}
 		if err := r.ParseForm(); err != nil {
+			if callbackMode {
+				http.Error(w, "bad form", http.StatusBadRequest)
+				return
+			}
 			http.Error(w, "bad form", http.StatusBadRequest)
 			return
 		}
@@ -1531,6 +1615,12 @@ func (s *server) handleUser(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := s.db.insertAnswer(r.Context(), requestID, action, text, payloadToStore); err != nil {
 			if strings.Contains(strings.ToLower(err.Error()), "unique") {
+				if callbackMode {
+					w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+					w.WriteHeader(http.StatusConflict)
+					_, _ = io.WriteString(w, "Already submitted.")
+					return
+				}
 				http.Redirect(w, r, "./?k="+url.QueryEscape(tokenPlain), http.StatusSeeOther)
 				return
 			}
@@ -1549,6 +1639,20 @@ func (s *server) handleUser(w http.ResponseWriter, r *http.Request) {
 		ev := s.mustNewEvent(r.Context(), requestID, "user.submitted", data)
 		_ = s.persistTerminalAware(r.Context(), ev)
 		s.hub.setTerminal(ev)
+		if callbackMode {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			if action != "" {
+				_, _ = io.WriteString(w, "Submitted: action="+truncate(action, 200))
+				return
+			}
+			if text != "" {
+				_, _ = io.WriteString(w, "Submitted: text="+truncate(text, 200))
+				return
+			}
+			_, _ = io.WriteString(w, "Submitted.")
+			return
+		}
 		http.Redirect(w, r, "./?k="+url.QueryEscape(tokenPlain), http.StatusSeeOther)
 		return
 	}

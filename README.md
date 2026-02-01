@@ -98,6 +98,7 @@ Notes:
 - Provide either `mcd` or `jsonforms.schema`. If both are omitted, the server falls back to a default OK button.
 - `--max-time 120` is just an example to avoid waiting forever in your terminal. If you don’t open the notification and submit within 120 seconds, curl exits with a timeout. You can resume waiting with `request_id` (see below).
 - In nonStream mode the response does not include `interaction_url`; the interaction link is delivered via your notification channel.
+- ServerChan 3 can render clickable Action Links inside notification Markdown (no browser needed). To enable it, pass `serverchan_action_links=true` and make sure `ASK4ME_BASE_URL` is `https` (Action Link only supports converting `https` links to `sccallback://`).
 
 Example response (returned after terminal state):
 
@@ -108,6 +109,16 @@ Example response (returned after terminal state):
   "data": { "action": "ok", "text": "" },
   "last_event_id": "evt_xxx"
 }
+```
+
+Example: enable ServerChan 3 Action Links (POST):
+
+```bash
+curl -sS --max-time 120 \
+  -X POST 'http://localhost:8080/v1/ask' \
+  -H 'Authorization: Bearer change-me' \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Ask4Me Demo","body":"Click a button to respond.","serverchan_action_links":true,"mcd":":::buttons\n- [OK](ok)\n- [Later](later)\n:::"}'
 ```
 
 ### 1b) POST with JSON Forms (schema-driven form)
